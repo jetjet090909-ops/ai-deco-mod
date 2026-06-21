@@ -5,14 +5,32 @@ on:
 
 jobs:
   build:
-    name: Build Android64
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+        - name: Android64
+          extra: -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_ROOT/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a
+
+    name: Build ${{ matrix.config.name }}
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    - name: Build Geode Mod
-      uses: geode-sdk/build-geode-mod@main
+    - name: Setup Geode CLI
+      uses: geode-sdk/actions/setup@v3
       with:
-        target: 'Android64'
+        build-config: ${{ matrix.config.extra }}
+
+    - name: Build Geode Mod
+      run: |
+        cmake -B build -DCMAKE_BUILD_TYPE=Release ${{ matrix.config.extra }}
+        cmake --build build --config Release
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: dm.ai-deco-assistant
+        path: build/*.geode
