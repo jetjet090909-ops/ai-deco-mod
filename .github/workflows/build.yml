@@ -1,33 +1,42 @@
 name: Build Mod
 
 on:
-  push:
-    branches: ["main"]
   workflow_dispatch:
 
 jobs:
   build:
-    name: Build Android64
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+        - name: Android64
+          target: aarch64-linux-android
+          extra: -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_ROOT/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a
+
+    name: Build ${{ matrix.config.name }}
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Check out the repository using Node 24 compatible action
-      - name: Checkout Code
-        uses: actions/checkout@v4
+    - name: Checkout Code
+      uses: actions/checkout@v4
 
-      # Step 2: Run Geode SDK build tool
-      - name: Build Geode Mod
-        uses: geode-sdk/build-geode-mod@main
-        id: build
-        with:
-          sdk: latest
-          target: Android64
-          build-config: Release
+    - name: Force Node.js 20
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
 
-      # Step 3: Securely upload your .geode binary via Node 24 optimized pipeline
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: dm.ai-deco-assistant
-          path: ${{ steps.build.outputs.build-output }}
-          if-no-files-found: error
+    - name: Setup Geode CLI
+      uses: geode-sdk/actions/setup@main
+      with:
+        build-config: ${{ matrix.config.extra }}
+
+    - name: Build Geode Mod
+      run: |
+        cmake -B build -DCMAKE_BUILD_TYPE=Release ${{ matrix.config.extra }}
+        cmake --build build --config Release
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: dm.ai-deco-assistant
+        path: build/*.geode
