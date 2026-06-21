@@ -20,7 +20,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Setup Geode CLI
-      uses: geode-sdk/actions/setup@v3
+      uses: geode-sdk/actions-setup@v3
       with:
         build-config: ${{ matrix.config.extra }}
 
