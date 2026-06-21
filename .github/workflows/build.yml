@@ -12,18 +12,7 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    - name: Force Node.js 20
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-
     - name: Build Geode Mod
       uses: geode-sdk/build-geode-mod@main
       with:
         target: 'Android64'
-
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: dm.ai-deco-assistant
-        path: build/*.geode
