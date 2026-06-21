@@ -1,0 +1,29 @@
+name: Build Mod
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Android64
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Geode Mod
+        uses: geode-sdk/build-geode-mod@main
+        id: build
+        with:
+          sdk: latest
+          target: Android64
+          build-config: Release
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dm.ai-deco-assistant
+          path: ${{ steps.build.outputs.build-output }}
+          if-no-files-found: error
