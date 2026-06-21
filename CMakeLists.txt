@@ -1,17 +1,21 @@
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.25)
 
-project(ai-deco-mod)
+project(ai-deco-mod VERSION 1.0.0 LANGUAGES CXX)
 
-include(FetchContent)
+# Find Geode
+find_package(Geode REQUIRED)
 
-FetchContent_Declare(
-    Geode
-    GIT_REPOSITORY https://github.com/geode-sdk/geode.git
-    GIT_TAG        v5.7.1
+# Force the runner to fetch the correct Android loader binaries manually
+execute_process(COMMAND geode sdk install-binaries)
+
+# Setup mod files
+setup_geode_mod(
+    ID "jetjet090909.aideco"
+    NAME "AI Deco Assistant"
+    DEVELOPER "jetjet090909"
+    DESCRIPTION "Automates level decoration using Gemini."
+    VERSION 1.0.0
 )
 
-FetchContent_MakeAvailable(Geode)
-
-add_library(${PROJECT_NAME} SHARED src/main.cpp)
-
-setup_geode_mod(${PROJECT_NAME})
+# Source files
+add_geode_mod_src(src/main.cpp)
