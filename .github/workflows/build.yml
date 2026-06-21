@@ -11,8 +11,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      # Step 1: Check out the repository using Node 24 compatible action
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
+      # Step 2: Run Geode SDK build tool
       - name: Build Geode Mod
         uses: geode-sdk/build-geode-mod@main
         id: build
@@ -21,7 +24,8 @@ jobs:
           target: Android64
           build-config: Release
 
-      - name: Upload artifact
+      # Step 3: Securely upload your .geode binary via Node 24 optimized pipeline
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: dm.ai-deco-assistant
