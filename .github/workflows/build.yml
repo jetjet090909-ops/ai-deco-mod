@@ -25,5 +25,5 @@ jobs:
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: ai-deco-assistant-android
+        name: dm.ai-deco-assistant
         path: build/*.geode
