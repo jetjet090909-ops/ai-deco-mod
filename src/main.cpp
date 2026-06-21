@@ -71,10 +71,9 @@ static Snap captureEditor() {
 //  CONSTANTS
 // ═══════════════════════════════════════════════════════════════════
 
-static constexpr float GD_UNITS_PER_SEC = 311.f;  // Speed 1x
+static constexpr float GD_UNITS_PER_SEC = 311.f;  
 static constexpr int   CONFIDENCE_WARN  = 70;
 
-// Object IDs safe for all players (always owned)
 static const std::vector<int> SAFE_PALETTE = {
     1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
     211, 467, 1031, 1755, 1756,
@@ -82,62 +81,95 @@ static const std::vector<int> SAFE_PALETTE = {
     899, 1006
 };
 
-// Style presets — detailed prompts for consistent results
 static const std::vector<std::pair<std::string, std::string>> PRESETS = {
-    {"HELL",   "hellfire demonic inferno - deep reds and burning oranges, pitch black bg, lava glow effects, bone and spike shapes, everything feels scorched and alive with fire"},
-    {"SPACE",  "deep cosmic void - near-black bg, cyan and violet nebula glows, dense star particle fields, hovering crystal formations, dramatic lens flares and light streaks"},
-    {"OCEAN",  "abyssal underwater depth - deep teal and midnight blue, bioluminescent glowing particles, soft coral and seaweed silhouettes, shimmering light rays filtering from above"},
-    {"NEON",   "cyberpunk dystopia nightscape - absolute black bg, hot pink and electric blue neon line outlines, sharp geometric grid patterns, glitch pulse effects at intervals"},
-    {"NATURE", "enchanted ancient forest - deep emerald greens and earthy browns, firefly glow particles, twisted vine and root silhouettes, warm dappled golden canopy light"},
+    {"HELL",   "hellfire demonic inferno - deep reds and burning oranges, pitch black bg, lava glow effects, bone and spike shapes"},
+    {"SPACE",  "deep cosmic void - near-black bg, cyan and violet nebula glows, dense star particle fields"},
+    {"OCEAN",  "abyssal underwater depth - deep teal and midnight blue, bioluminescent glowing particles"},
+    {"NEON",   "cyberpunk dystopia nightscape - absolute black bg, hot pink and electric blue neon outlines"},
+    {"NATURE", "enchanted ancient forest - deep emerald greens and earthy browns, firefly glow particles"},
 };
 
-// ═══════════════════════════════════════════════════════════════════
-//  GEMINI URL
-// ═══════════════════════════════════════════════════════════════════
-
 static const std::string GEMINI_URL =
-    "https://generativelanguage.googleapis.com/v1beta/models/"
-    "gemini-2.0-flash:generateContent";
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
 // ─── Build per-pass system prompt ────────────────────────────────
 
-static std::string buildPassPrompt(int pass, bool ownedOnly,
-                                   float secStart, float secEnd,
-                                   float bpm) {
+static std::string buildPassPrompt(int pass, bool ownedOnly, float secStart, float secEnd, float bpm) {
     float beatLen = GD_UNITS_PER_SEC * 60.f / bpm;
-
     std::string passStr;
     switch (pass) {
         case 0:
-            passStr =
-                "═══ PASS 1 — BACKGROUND LAYER ═══\n"
-                "Place ONLY large background objects. z_layer MUST be -3.\n"
-                "Scale range: 1.5–4.0. Object count: 15–25.\n"
-                "These are massive atmospheric shapes far behind gameplay.\n"
-                "Sparse placement — these set the mood, not the detail.";
-            break;
+            passStr = "═══ PASS 1 — BACKGROUND LAYER ═══\nPlace ONLY large background objects. z_layer MUST be -3.\nScale range: 1.5–4.0. Object count: 15–25."; break;
         case 1:
-            passStr =
-                "═══ PASS 2 — MIDGROUND LAYER ═══\n"
-                "Place ONLY midground detail objects. z_layer MUST be -1.\n"
-                "Scale range: 0.8–2.0. Object count: 20–30.\n"
-                "Fill space between background and gameplay with layered interest.\n"
-                "Denser than pass 1. Avoid covering pass 1 objects entirely.";
-            break;
+            passStr = "═══ PASS 2 — MIDGROUND LAYER ═══\nPlace ONLY midground detail objects. z_layer MUST be -1.\nScale range: 0.8–2.0. Object count: 20–30."; break;
         case 2:
-            passStr = std::string(
-                "═══ PASS 3 — FOREGROUND + TRIGGERS ═══\n"
-                "Place small foreground accent objects AND all color/pulse triggers.\n"
-                "z_layer for deco: 1 or 3. Scale: 0.3–1.2. Count: 10–20 deco objects.\n"
-                "ALSO generate 4–8 color triggers and 3–5 pulse triggers.\n"
-                "BPM = ") + std::to_string((int)bpm) + ". GD speed = ~311 units/sec.\n" +
-                "Beat interval in units = " + std::to_string((int)beatLen) + ".\n" +
-                "Snap trigger X positions to nearest beat grid (" +
-                std::to_string((int)beatLen) + " unit intervals).";
-            break;
-        default:
-            passStr = "Place decoration objects.";
+            passStr = "═══ PASS 3 — FOREGROUND + TRIGGERS ═══\nz_layer for deco: 1 or 3. Scale: 0.3–1.2. Count: 10–20 deco objects.\nBPM = " + std::to_string((int)bpm) + ". Beat interval in units = " + std::to_string((int)beatLen); break;
+        default: passStr = "Place decoration objects.";
     }
 
     std::string secStr = "";
     if (secStart >= 0.f && secEnd > secStart) {
+        secStr = "\n\nSECTION CONSTRAINT: ONLY place objects between x=" + std::to_string((int)secStart) + " and x=" + std::to_string((int)secEnd);
+    }
+
+    std::string palStr = "";
+    if (ownedOnly) {
+        palStr = "\n\nOBJECT PALETTE (restricted): Only use IDs: 1,2,3,4,5,6,7,8,9,10,211,467,1031,1755,1756,1329,1330,1331,1332,1334\n";
+    }
+
+    return "You are an elite Geometry Dash level decorator. Output raw JSON format only.\n" + passStr + secStr + palStr;
+}
+
+struct ChatEntry {
+    std::string sender;
+    std::string message;
+    std::string timestamp;
+};
+
+// ═══════════════════════════════════════════════════════════════════
+//  AI DECO POPUP
+// ═══════════════════════════════════════════════════════════════════
+
+class AIDecoPopup : public FLAlertLayer {
+    CCTextInputNode* m_promptInput   = nullptr;
+    CCTextInputNode* m_bpmInput      = nullptr;
+    CCTextInputNode* m_secStartInput = nullptr;
+    CCTextInputNode* m_secEndInput   = nullptr;
+    CCLabelBMFont* m_statusLabel   = nullptr;
+    CCLayer* m_chatLayer     = nullptr;
+    CCMenu* m_actionMenu    = nullptr;
+
+    float m_chatY         = 0.f;
+    bool  m_busy          = false;
+    bool  m_ownedOnly     = false;
+    bool  m_previewMode   = true;
+    float m_bpm           = 120.f;
+    float m_secStart      = -1.f;
+    float m_secEnd        = -1.f;
+    std::string m_currentPrompt;
+    std::string m_currentApiKey;
+
+    std::vector<GameObject*>              m_previewObjects;
+    std::vector<GameObject*>              m_lastPlaced;
+    std::vector<std::vector<GameObject*>> m_passObjects;
+    std::vector<ChatEntry>                m_chatHistory;
+
+    EventListener<Task<web::WebResponse, web::WebProgress>> m_listener;
+
+    static constexpr float PW     = 460.f;
+    static constexpr float PH     = 420.f;
+    static constexpr float CHAT_H = 190.f;
+
+protected:
+    bool init() {
+        if (!FLAlertLayer::init(nullptr, "AI Deco Assistant", "Close", nullptr, PW))
+            return false;
+        m_mainLayer->removeAllChildren();
+        buildUI();
+        return true;
+    }
+
+    void buildUI() {
+        auto* popupBg = CCScale9Sprite::create("GJ_square01.png");
+        popupBg->setContentSize({PW, PH});
+        popupBg->setPosition({PW
